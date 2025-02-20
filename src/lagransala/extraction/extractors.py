@@ -31,7 +31,7 @@ async def intermediate_event_instructor_extractor(
     )
 
     logging.info(f"Extracting intermediate event from {sourced_content_blocks.url}")
-    async with asyncio.Semaphore(8):  # TODO: Make this based on rate limiting
+    async with asyncio.Semaphore(3):  # TODO: Make this based on rate limiting
         intermediate_event, completion_data = (
             await client.chat.completions.create_with_completion(
                 model=model,

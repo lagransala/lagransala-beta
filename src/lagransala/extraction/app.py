@@ -43,8 +43,8 @@ async def event_url_pipeline(
     url: HttpUrl,
     spec: VenueExtractionDef,
 ) -> list[Event]:
-    sourced_blocks = await content_blocks_scraper(http_session, url, spec)
     try:
+        sourced_blocks = await content_blocks_scraper(http_session, url, spec)
         extraction = await intermediate_event_instructor_extractor(
             sourced_blocks, instructor_client
         )
@@ -85,22 +85,23 @@ async def main():
 
         async with aiohttp.ClientSession(headers=headers) as http_session:
             # TODO: avoid having to wait for all urls to be scraped before starting to extract
-            urls = [
-                (url, spec, venue)
+            urls = {
+                (url, spec)
                 for urls in await asyncio.gather(
                     *[
                         coroutine_with_data(
                             schedule_def_scraper(http_session, spec.schedule_spec),
-                            (spec, spec.get_venue(db_session)),
-                            lambda urls, data: [(t, data[0], data[1]) for t in urls],
+                            spec,
+                            lambda urls, spec: {(url, spec) for url in urls},
                         )
                         for spec in specs
                     ]
                 )
-                for url, spec, venue in urls
+                for url, spec in urls
                 if url not in event_urls
-            ]
+            }
             print(f"Found {len(urls)} new urls")
+
             new_events = [
                 event
                 for events in await asyncio.gather(
@@ -108,7 +109,7 @@ async def main():
                         event_url_pipeline(
                             db_session, http_session, instructor_client, url, spec
                         )
-                        for url, spec, _ in urls
+                        for url, spec in urls
                     ]
                 )
                 for event in events
