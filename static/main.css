@@ -1,0 +1,172 @@
+* {
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+    font-family: Times, serif;
+    font-size: 1.2rem;
+    list-style: none;
+    font-weight: normal;
+}
+
+body {
+    background: #f8f8f8;
+}
+
+header {
+    padding: 1rem 1rem;
+    position: fixed;
+    z-index: 10;
+    background: #f8f8f8;
+    width: 100%;
+}
+
+header h1 {
+    font-size: 2em;
+}
+
+main {
+    position: absolute;
+    top: 4rem;
+    padding: 1rem;
+}
+
+section>h2 {
+    font-size: 2rem;
+    font-weight: bold;
+    margin-bottom: 1rem;
+}
+
+section .days {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
+    gap: 1rem;
+}
+
+
+.day {
+    margin-bottom: 1em;
+}
+
+.day>h3 {
+    position: sticky;
+    top: 4.7rem;
+    border-bottom: 2px solid black;
+    background: #f8f8f8;
+}
+
+.event {
+    padding: 1em 0;
+    border-bottom: 2px solid #ddd;
+    display: flex;
+    flex-direction: column;
+    gap: .5em;
+}
+
+.event:last-child {
+    border-bottom: none;
+}
+
+p {
+    font-size: 1rem;
+}
+
+.info {
+    display: flex;
+    gap: .5rem;
+}
+
+.info address {
+    font-style: normal;
+}
+
+h3 {
+    font-size: 1.5rem;
+}
+
+h4 {
+    font-size: 1.5rem;
+}
+
+a,
+a:visited {
+    color: inherit;
+    text-decoration: none;
+}
+
+.event:hover {
+    background: #f0f0f0;
+}
+
+.event:hover>.source-link,
+.source-link:hover {
+    text-decoration: underline;
+}
+
+.event .title {
+    gap: .3rem;
+}
+
+.event .title h3 {
+    font-style: italic;
+}
+
+.event p.presentation {
+    font-style: italic;
+}
+
+dl {
+    display: grid;
+    grid-template-columns: max-content auto;
+    column-gap: .8rem;
+}
+
+dl * {
+    font-size: 1rem;
+}
+
+
+.event ul * {
+    font-size: 1rem;
+}
+
+.event ul {
+    margin-left: 1rem;
+}
+
+.event ul li {
+    list-style-type: '- ';
+}
+
+pre {
+    font-family: monospace;
+    font-size: .7rem;
+}
+
+
+.warning {
+    color: red;
+    font-family: monospace;
+    font-size: .8rem;
+    border: 1px solid red;
+    padding: 1rem;
+    text-align: center;
+}
+
+@media print {
+    @page {
+        size: landscape;
+    }
+
+    html {
+        font-size: 7pt;
+    }
+
+    body,
+    .event {
+        background: none;
+    }
+
+    header {
+        position: relative;
+    }
+}

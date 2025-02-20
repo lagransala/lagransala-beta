@@ -1,0 +1,146 @@
+{% macro format_list(list)%}
+{%- if list | length == 1 -%}
+{{- list[0] -}}
+{%- elif list | length >= 1 -%}
+{{- list[:-2]|join(", ") }}, {{ list[-2] }} y {{ list[-1] -}}
+{%- endif -%}
+{% endmacro %}
+
+{% macro describe(name, value)%}
+{% if value %}
+<dt>{{ name }}</dt>
+<dd>{{ value }}</dd>
+{% endif %}
+{% endmacro %}
+
+
+{% macro event_component(event) %}
+{% set projections = event.parts | selectattr("type", "equalto", "projection") | list %}
+{% set presentations = event.parts | selectattr("type", "equalto", "presentation") | list %}
+
+{% set n_projections = projections | length %}
+{% set n_presentations = presentations | length %}
+
+<div class="event">
+    <div class="info">
+        <time>{{ event.datetime.strftime('%H:%M') }}</time>
+        <address>{{ event.venue.name }}</address>
+    </div>
+    {% if n_projections == 1 and n_presentations == 0 %}
+    {{ single_projection(event)}}
+    {% elif n_projections == 1 and n_presentations >= 1 %}
+    {{ event_component_simple_with_presentation(event)}}
+    {% elif n_projections > 1 and n_presentations == 0%}
+    {{ event_component_multiple(event)}}
+    {% elif n_projections > 1 and n_presentations == 1%}
+    {{ event_component_multiple_with_presentation(event)}}
+    {% else %}
+    <a class="source-link" href="{{ event.url }}" target="_blank">
+        <div class="title">{{ event.title }}</div>
+    </a>
+    <span class="warning">Weird case reached:
+        <pre>n_projections: {{ n_projections }}</pre>
+        <pre>n_presentations: {{ n_presentations }}</pre>
+    </span>
+    {% endif %}
+</div>
+{% endmacro %}
+
+{% macro single_projection(event) %}
+{% set projection = event.parts[0] %}
+<a class="source-link" href="{{ event.url }}" target="_blank">
+    <div class="title">
+        <h3>{{ projection.title }}</h3>
+        <h4>{{format_list(projection.director)}}</h4>
+    </div>
+</a>
+<p>{{ projection.description }}</p>
+<dl>
+    {{ describe("Duración", projection.duration) }}
+    {{ describe("Intérpretes", format_list(projection.actors)) }}
+    {{ describe("País", projection.country) }}
+</dl>
+{% endmacro %}
+
+{% macro event_component_simple_with_presentation(event) %}
+{% set projection = event.parts | selectattr("type", "equalto", "projection") | first %}
+{% set presentations = event.parts | selectattr("type", "equalto", "presentation") %}
+<a class="source-link" href="{{ event.url }}" target="_blank">
+    <div class="title">
+        <h3>{{ projection.title }}</h3>
+        <h4>{{format_list(projection.director)}}</h4>
+    </div>
+</a>
+<p>{{ projection.description }}</p>
+
+{% for presentation in presentations %}
+<p class="presentation">
+    {{ presentation.description }}
+    {% if presentation.speakers %}
+    con
+    {{ format_list(presentation.speakers) }}
+    {% endif %}
+</p>
+{% endfor %}
+<dl>
+    {{ describe("Duración total ", event.duration) }}
+    {{ describe("Duración", projection.duration) }}
+    {{ describe("Intérpretes", format_list(projection.actors)) }}
+    {{ describe("País", projection.country) }}
+</dl>
+{% endmacro %}
+
+{% macro event_component_multiple(event) %}
+{% set projections = event.parts | selectattr("type", "equalto", "projection") | list %}
+<a class="source-link" href="{{ event.url }}" target="_blank">
+    <div class="title ">
+        <h3>{{ event.title }}</h3>
+    </div>
+</a>
+<p>{{ event.description }}</p>
+
+<ul>
+    {% for projection in projections %}
+    <li>
+        {{ projection.title -}}
+        {%- if projection.director -%}
+        , {{ format_list(projection.director) -}}
+        {%- endif -%}.
+        {% if projection.duration %}
+        ({{ projection.duration }})
+        {% endif %}
+    </li>
+    {% endfor %}
+</ul>
+<dl>
+    {{ describe("Duración total ", event.duration) }}
+</dl>
+{% endmacro %}
+
+{% macro event_component_multiple_with_presentation(event) %}
+{% set projections = event.parts | selectattr("type", "equalto", "projection") | list %}
+{% set presentation = event.parts | selectattr("type", "equalto", "presentation") | first %}
+<a class="source-link" href="{{ event.url }}" target="_blank">
+    <div class="title ">
+        <h3>{{ event.title }}</h3>
+    </div>
+</a>
+<p class="presentation">{{ presentation.description }}</p>
+<p>{{ event.description }}</p>
+<ul>
+    {% for projection in projections %}
+    <li>
+        {{ projection.title -}}
+        {%- if projection.director -%}
+        , {{ format_list(projection.director) -}}
+        {%- endif -%}.
+        {% if projection.duration %}
+        ({{ projection.duration }})
+        {% endif %}
+    </li>
+    {% endfor %}
+</ul>
+<dl>
+    {{ describe("Duración total ", event.duration) }}
+</dl>
+{% endmacro %}

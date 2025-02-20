@@ -1,0 +1,62 @@
+- id: "96c480da116f405b84543ea092adede6"
+  name: Cine Doré
+  slug: "cine-dore"
+  website: https://www.cultura.gob.es/cultura/areas/cine/mc/fe/cine-dore.html
+  schedule_url: null
+  pricing_url: null
+  address: "blablabla"
+  description: La Filmoteca Española es una institución cultural dedicada a la difusión
+    de la historia del cine y a la conservación de su patrimonio fílmico. Fundada
+    en 1953, es una de las filmotecas más antiguas del mundo.
+  location_latitude: 40.411725
+  location_longitude: -3.699102
+- id: "3bcf158047184038b0d99ac450ff783d"
+  name: Cineteca Madrid
+  slug: cineteca-madrid
+  website: "https://www.cinetecamadrid.com/"
+  schedule_url: null
+  pricing_url: null
+  address: "blablabla"
+  description: "La Cineteca Madrid es un espacio cultural dedicado a la difusión de la cultura cinematográfica. Fundada en 2011, es un referente en la ciudad de Madrid."
+  location_latitude: 0.0
+  location_longitude: 0.0
+- id: "88064eee72e4479c9370cb9e29955381"
+  name: Casa de América
+  slug: casa-de-america
+  website: "https://www.casamerica.es/"
+  schedule_url: null
+  pricing_url: null
+  address: "blablabla"
+  description: ""
+  location_latitude: 0.0
+  location_longitude: 0.0
+- id: "e8dfe2ced142423397fb8f84b21a9e8a"
+  name: Sala Berlanga
+  slug: sala-berlanga
+  website: https://salaberlanga.com/
+  schedule_url: null
+  pricing_url: null
+  address: "blablabla"
+  description: ''
+  location_latitude: 0.0
+  location_longitude: 0.0
+- id: "a1a7210095ca4975bba71f9f26d241d3"
+  name: Conde Duque
+  slug: conde-duque
+  website: "https://www.condeduquemadrid.es/"
+  schedule_url: null
+  pricing_url: null
+  address: "blablabla"
+  description: ""
+  location_latitude: 0.0
+  location_longitude: 0.0
+- id: "97e1ef3f4bc246de8705e7b2b71f77af"
+  name: Círculo de Bellas Artes
+  slug: circulo-de-bellas-artes
+  website: https://www.circulobellasartes.com/
+  schedule_url: null
+  pricing_url: null
+  address: "blablabla"
+  description: ''
+  location_latitude: 0.0
+  location_longitude: 0.0

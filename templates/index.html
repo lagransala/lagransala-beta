@@ -1,0 +1,25 @@
+{% from "event_component.html" import event_component %}
+{% extends "base.html" %}
+{% block main %}
+{% for month, days in events.items() %}
+<section>
+    <h2>{{ month | capitalize }}</h2>
+    <div class="days">
+        {% for day, events in days.items() %}
+        <div class="day">
+            <h3>{{ day | capitalize }} de {{ month | capitalize }}</h3>
+            {% for e in events %}
+            {% if True %}
+            {{ event_component(e) }}
+            {% else %}
+            <pre>
+                {{ e.model_dump_json(indent=2) }}
+            </pre>
+            {% endif %}
+            {% endfor %}
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endfor %}
+{% endblock main %}
