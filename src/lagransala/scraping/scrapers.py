@@ -24,13 +24,13 @@ def soup_content_block_scraper(
     soup: BeautifulSoup, spec: ContentBlockDef
 ) -> ContentBlock:
     if len(soup.select(spec.selector)) > 1:
-        logging.info(
+        logger.debug(
             f"More than one block found with selector `{spec.selector}` (using the first)"
         )
     tag = soup.select_one(spec.selector)
 
     if tag is None:
-        logging.info(
+        logger.debug(
             f"Empty block found with selector `{spec.selector}` (relevant `{spec.relevant}`)"
         )
 
@@ -75,6 +75,7 @@ def content_block_markdown_cleaner(block: ContentBlock) -> ContentBlock:
         if block.content == "":
             block = block.update_content(None)
             break
+        assert block.content is not None
         block = block.update_content(re.sub(regex, "", block.content))
     if block.content is None:
         return block
@@ -108,7 +109,7 @@ async def content_blocks_scraper(
         A list of blocks with content in markdown format
     """
 
-    logger.info(f"Scraping content blocks from {url}")
+    logger.debug(f"Scraping content blocks from {url}")
     async with session.get(str(url)) as response:
         soup = BeautifulSoup(await response.text(), "html.parser")
 
@@ -129,7 +130,7 @@ async def schedule_page_scraper(
     client: aiohttp.ClientSession, page_url: HttpUrl, event_url_pattern: str
 ) -> set[HttpUrl]:
     urls = set()
-    logger.info(f"Getting event urls from {page_url}")
+    logger.debug(f"Getting event urls from {page_url}")
     async with client.get(str(page_url)) as response:
         soup = BeautifulSoup(await response.text(), "html.parser")
         links = map(lambda tag: tag.get("href"), soup.select("[href]"))

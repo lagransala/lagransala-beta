@@ -42,7 +42,7 @@ class Venue(SQLModel, table=True):
                 venue = Venue.model_validate(raw_venue)
                 session.add(venue)
             else:
-                logger.info(f"Venue {result.name} ({result.id}) already exists")
+                logger.debug(f"Venue {result.name} ({result.id}) already exists")
         session.commit()
 
 

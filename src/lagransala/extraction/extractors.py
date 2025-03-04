@@ -5,6 +5,11 @@ from datetime import date
 from instructor import AsyncInstructor
 from langfuse import Langfuse
 from langfuse.decorators import langfuse_context, observe
+from tenacity import (
+    AsyncRetrying,
+    stop_after_attempt,
+    wait_random_exponential,
+)
 
 from ..scraping.models import SourcedContentBlocks
 from .models.v2 import ExtractionModel
@@ -30,8 +35,10 @@ async def intermediate_event_instructor_extractor(
         prompt=extractor_prompt,
     )
 
-    logging.info(f"Extracting intermediate event from {sourced_content_blocks.url}")
-    async with asyncio.Semaphore(3):  # TODO: Make this based on rate limiting
+    async with asyncio.Semaphore(1):  # TODO: Make this based on rate limiting
+        logging.debug(
+            f"Extracting intermediate event from {sourced_content_blocks.url}"
+        )
         intermediate_event, completion_data = (
             await client.chat.completions.create_with_completion(
                 model=model,
@@ -61,6 +68,11 @@ async def intermediate_event_instructor_extractor(
                     "blocks": sourced_content_blocks.blocks,
                     "current_year": date.today().year,
                 },
+                max_retries=AsyncRetrying(
+                    wait=wait_random_exponential(multiplier=10, min=5, max=120),
+                    stop=stop_after_attempt(0),  # TODO: for now, don't retry
+                    reraise=True,
+                ),
             )
         )
     langfuse_context.update_current_observation(

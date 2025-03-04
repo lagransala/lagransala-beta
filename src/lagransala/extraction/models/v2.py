@@ -113,12 +113,14 @@ class ExtractionEvent(BaseModel):
         )
 
 
-class ExtractionModel(BaseModel):
-    content: ExtractionEvent | list[ExtractionEvent]
+ExtractionModel = ExtractionEvent
 
-    def as_events(self, venue_id: UUID, url: HttpUrl) -> list[Event]:
-        match self.content:
-            case ExtractionEvent():
-                return [self.content.as_event(venue_id, url)]
-            case list():
-                return [event.as_event(venue_id, url) for event in self.content]
+# class ExtractionModel(BaseModel):
+#     content: ExtractionEvent | list[ExtractionEvent]
+
+#     def as_events(self, venue_id: UUID, url: HttpUrl) -> list[Event]:
+#         match self.content:
+#             case ExtractionEvent():
+#                 return [self.content.as_event(venue_id, url)]
+#             case list():
+#                 return [event.as_event(venue_id, url) for event in self.content]

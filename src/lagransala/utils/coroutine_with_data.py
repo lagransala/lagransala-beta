@@ -8,7 +8,7 @@ R = TypeVar("R")
 async def coroutine_with_data(
     coroutine: Coroutine[Any, Any, T],
     data: D,
-    combiner: Callable[[T, D], R] = lambda t, d: (t, d),
+    combiner: Callable[[T, D], R],
 ) -> R:
     result = await coroutine
     return combiner(result, data)
