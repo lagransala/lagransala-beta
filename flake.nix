@@ -28,7 +28,10 @@
           devShells.default = config.devShells.app;
 
           devShells.app = let
-            arg = project.renderers.withPackages { inherit python; };
+            arg = project.renderers.withPackages {
+              inherit python;
+              extras = [ "test" "dev" ];
+            };
             pythonEnv = python.withPackages arg;
           in pkgs.mkShell { packages = [ pythonEnv ]; };
         };

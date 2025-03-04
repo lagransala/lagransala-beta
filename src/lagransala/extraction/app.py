@@ -11,7 +11,7 @@ from sqlmodel import Session, select
 from lagransala.scraping.models import VenueExtractionDef
 
 from ..core.models import Event, Venue
-from ..deps import initialize_instructor_gemini, initialize_sqlmodel
+from ..deps import initialize_instructor_anthropic, initialize_sqlmodel
 from ..scraping.app import venue_extraction_defs_from_yaml
 from ..scraping.scrapers import content_blocks_scraper, schedule_def_scraper
 from ..utils.coroutine_with_data import coroutine_with_data
@@ -88,7 +88,7 @@ async def main():
     )
 
     engine = initialize_sqlmodel()
-    instructor_client = initialize_instructor_gemini()
+    instructor_client = initialize_instructor_anthropic()
     with Session(engine) as db_session:
 
         specs = venue_extraction_defs_from_yaml()
@@ -147,3 +147,7 @@ async def main():
                 for event in events
             ]
             print(f"Added {len(new_events)} new events from {len(urls)} urls")
+
+
+def run_main():
+    asyncio.run(main())
