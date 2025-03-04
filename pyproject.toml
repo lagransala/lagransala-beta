@@ -1,12 +1,36 @@
-[tool.poetry]
+[project]
 name = "lagransala"
 version = "0.1.0"
 description = ""
 authors = []
 readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi",
+  "uvicorn",
+  "sqlmodel",
+  "aiohttp",
+  "beautifulsoup4",
+  "markdownify",
+  "pyyaml",
+  "anthropic",
+  "jinja2",
+  "babel",
+  "langfuse",
+  "instructor"
+]
+
+[project.optional-dependencies]
+test = [
+  "pytest < 5.0.0",
+  "pytest-cov[all]"
+]
+
+[project.scripts]
+extractor = "lagransala.__main__:run_extractor"
+web = "lagransala.__main__:run_web"
 
 [tool.poetry.dependencies]
-python = "^3.12"
 fastapi = {extras = ["standard"], version = "^0.115.8"}
 uvicorn = {extras = ["standard"], version = "^0.34.0"}
 sqlmodel = "^0.0.22"
