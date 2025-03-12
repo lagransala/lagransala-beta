@@ -5,154 +5,122 @@ from urllib.parse import urljoin
 import aiohttp
 from bs4 import BeautifulSoup
 from langfuse.decorators.langfuse_decorator import asyncio
-from markdownify import markdownify
-from pydantic import HttpUrl
+from pydantic import HttpUrl, TypeAdapter
+from redis.commands.json.path import Path
 
-from .models import (
-    ContentBlock,
-    ContentBlockDef,
-    ScheduleDef,
-    SourcedContentBlocks,
-    VenueExtractionDef,
-)
+from lagransala.utils.http_url_key import http_url_key
+
+from ..deps import get_redis
+from .models import ContentBlock, ContentBlockSpec, SourcedContentBlocks, VenueSpec
 
 logger = logging.getLogger(__name__)
+redis = get_redis()
 
 
-# TODO: Dependency injection for BeautifulSoup
-def soup_content_block_scraper(
-    soup: BeautifulSoup, spec: ContentBlockDef
-) -> ContentBlock:
-    if len(soup.select(spec.selector)) > 1:
-        logger.debug(
-            f"More than one block found with selector `{spec.selector}` (using the first)"
-        )
-    tag = soup.select_one(spec.selector)
+class ContentBlocksScraper:
+    def __init__(self, session: aiohttp.ClientSession, venue_spec: VenueSpec) -> None:
+        self.session = session
+        self.venue_spec = venue_spec
+        self.redis_key = f"content_blocks_scraper:{venue_spec.venue_id.hex}"
 
-    if tag is None:
-        logger.debug(
-            f"Empty block found with selector `{spec.selector}` (relevant `{spec.relevant}`)"
-        )
+    async def __call__(self, url: HttpUrl) -> list[ContentBlock]:
+        key = f"{self.redis_key}:{http_url_key(url)}"
+        adapter = TypeAdapter(list[ContentBlock])
+        if data := redis.get(key):
+            logger.debug(f"CacheHit: {key}")
+            blocks = adapter.validate_json(data)
+        else:
+            text = await self._fetch_html(url)
+            soup = BeautifulSoup(text, "html.parser")
+            blocks = self._extract_content_blocks(soup)
+            redis.set(key, adapter.dump_json(blocks))
+            blocks = [block.clean_markdown for block in blocks]
+        return blocks
 
-    return ContentBlock(
-        selector=spec.selector,
-        relevant=spec.relevant,
-        remove_regex=spec.remove_regex,
-        strip_elements=spec.strip_elements,
-        content=None if tag is None else str(tag),
-    )
+    def task(self, url: HttpUrl) -> asyncio.Task[list[ContentBlock]]:
+        return asyncio.create_task(self(url))
 
+    async def _fetch_html(self, url: HttpUrl) -> str:
+        logger.info(f"Fetch html from {url}")
+        # TODO: Rate limit with semaphore
+        async with self.session.get(str(url)) as response:
+            text = await response.text()
+            return text
 
-def content_block_html_to_markdown(block: ContentBlock) -> ContentBlock:
-    """
-    Formats an HTML block into markdown.
-
-    Args:
-        blocks: The HTML block to format
-    Returns:
-        The markdown formatted block
-    """
-    if block.content is None:
-        return block
-
-    markdown_options = {
-        "strip": ["script", "style"] + block.strip_elements,
-        "heading_style": "ATX",
-        "bullets": "-",
-    }
-
-    return block.update_content(markdownify(block.content, **markdown_options))
-
-
-def content_block_markdown_cleaner(block: ContentBlock) -> ContentBlock:
-    """
-    Cleans up a markdown block, using the remove_regex field to remove unwanted
-    elements. Also remo
-    """
-    for regex in block.remove_regex:
-        if block.content is None:
-            break
-        if block.content == "":
-            block = block.update_content(None)
-            break
-        assert block.content is not None
-        block = block.update_content(re.sub(regex, "", block.content))
-    if block.content is None:
-        return block
-
-    # Remove multiple blank lines
-
-    block = block.update_content(re.sub(r"\n\s*\n\s*\n", "\n\n", block.content))
-    # Remove trailing whitespace
-    assert block.content is not None
-    block = block.update_content(
-        "\n".join(line.rstrip() for line in block.content.splitlines())
-    )
-    assert block.content is not None
-    block = block.update_content(block.content.strip() + "\n")
-
-    if block.content in ["", " ", "\n"]:
-        block = block.update_content(None)
-    return block
-
-
-async def content_blocks_scraper(
-    session: aiohttp.ClientSession, url: HttpUrl, extraction_def: VenueExtractionDef
-) -> SourcedContentBlocks:
-    """
-    Fetches the webpage content and extracts the specified content blocks.
-
-    Args:
-        document: The webpage content source
-        block_specs: The content blocks specifications
-    Returns:
-        A list of blocks with content in markdown format
-    """
-
-    logger.debug(f"Scraping content blocks from {url}")
-    async with session.get(str(url)) as response:
-        soup = BeautifulSoup(await response.text(), "html.parser")
-
+    def _extract_content_blocks(self, soup: BeautifulSoup) -> list[ContentBlock]:
         # Clean up the html soup
         for element in soup.find_all(["script", "style", "nav", "header", "footer"]):
             element.decompose()
-        blocks = [
-            soup_content_block_scraper(soup, spec) for spec in extraction_def.block_defs
-        ]
-        blocks = [content_block_html_to_markdown(block) for block in blocks]
-        blocks = [content_block_markdown_cleaner(block) for block in blocks]
-        return SourcedContentBlocks(
-            url=url, venue_id=extraction_def.venue_id, blocks=blocks
+        blocks = [self._soup_scraper(soup, spec) for spec in self.venue_spec.block_defs]
+        return blocks
+
+    def _soup_scraper(
+        self, soup: BeautifulSoup, spec: ContentBlockSpec
+    ) -> ContentBlock:
+        if len(soup.select(spec.selector)) > 1:
+            logger.info(
+                f"More than one block found with selector `{spec.selector}` (using the first)"
+            )
+        tag = soup.select_one(spec.selector)
+
+        if tag is None:
+            logger.info(
+                f"Empty block found with selector `{spec.selector}` (relevant `{spec.relevant}`)"
+            )
+
+        block = ContentBlock(
+            selector=spec.selector,
+            relevant=spec.relevant,
+            remove_regex=spec.remove_regex,
+            strip_elements=spec.strip_elements,
+            content=None if tag is None else str(tag),
         )
+        return block
 
 
-async def schedule_page_scraper(
-    client: aiohttp.ClientSession, page_url: HttpUrl, event_url_pattern: str
-) -> set[HttpUrl]:
-    urls = set()
-    logger.debug(f"Getting event urls from {page_url}")
-    async with client.get(str(page_url)) as response:
-        soup = BeautifulSoup(await response.text(), "html.parser")
-        links = map(lambda tag: tag.get("href"), soup.select("[href]"))
-        for link in links:
-            if not isinstance(link, str):
-                continue
-            if re.match(event_url_pattern, link):
-                if link.startswith(("http://", "https://")):
-                    urls.add(HttpUrl(link))
-                else:
-                    urls.add(HttpUrl(urljoin(str(page_url), link)))
-    return urls
+class ScheduleScraper:
+    def __init__(
+        self, http_session: aiohttp.ClientSession, venue_spec: VenueSpec
+    ) -> None:
+        self.http_session = http_session
+        self.venue_spec = venue_spec
+        self.redis_key = f"schedule_scraper:{venue_spec.venue_id.hex}"
 
+    @property
+    def tasks(self) -> list[asyncio.Task[set[HttpUrl]]]:
+        return [self._page_task(url) for url in self.pages]
 
-async def schedule_def_scraper(
-    client: aiohttp.ClientSession, spec: ScheduleDef
-) -> set[HttpUrl]:
-    return set().union(
-        *await asyncio.gather(
-            *[
-                schedule_page_scraper(client, url, spec.event_url_pattern)
-                for url in spec.urls
-            ]
-        )
-    )
+    async def __call__(self) -> set[HttpUrl]:
+        url_sets = await asyncio.gather(*self.tasks)
+        return set().union(*url_sets)
+
+    @property
+    def pages(self) -> list[HttpUrl]:
+        return self.venue_spec.pagination_urls
+
+    async def _page_event_urls(self, page_url: HttpUrl) -> set[HttpUrl]:
+        key = f"{self.redis_key}:page_event_urls:{http_url_key(page_url)}"
+        adapter = TypeAdapter(set[HttpUrl])
+        if data := redis.get(key):
+            logger.debug(f"CacheHit: {key}")
+            return adapter.validate_json(data)
+        logger.info(f"Getting page urls from {page_url}")
+        urls: set[HttpUrl] = set()
+        # TODO: Rate limit with semaphore
+        async with self.http_session.get(str(page_url)) as response:
+            soup = BeautifulSoup(await response.text(), "html.parser")
+            links = map(lambda tag: tag.get("href"), soup.select("[href]"))
+            for link in links:
+                if not isinstance(link, str):
+                    continue
+                if re.match(self.venue_spec.event_url_pattern, link):
+                    if link.startswith(("http://", "https://")):
+                        urls.add(HttpUrl(link))
+                    else:
+                        urls.add(HttpUrl(urljoin(str(page_url), link)))
+        data = adapter.dump_python(urls)
+        redis.set(key, adapter.dump_json(urls))
+        return urls
+
+    def _page_task(self, page_url: HttpUrl) -> asyncio.Task[set[HttpUrl]]:
+        return asyncio.create_task(self._page_event_urls(page_url))

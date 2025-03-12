@@ -14,26 +14,35 @@
         [ "x86_64-linux" "aarch64-linux" "aarch64-darwin" "x86_64-darwin" ];
       perSystem = { config, pkgs, ... }:
         let
-          python = pkgs.python3;
+          python = pkgs.python3.override {
+            packageOverrides =
+              pkgs.lib.composeManyExtensions [ (import ./overlay.nix) ];
+          };
           project =
             pyproject-nix.lib.project.loadPyproject { projectRoot = ./.; };
 
         in {
-          packages.default = config.packages.app;
-          packages.app = let
-            attrs = project.renderers.buildPythonPackage { inherit python; };
-          in python.pkgs.buildPythonPackage
-          (attrs // { env.CUSTOM_ENVVAR = "hello"; });
+          packages = {
+            default = config.packages.lagransala;
+            lagransala = python.pkgs.buildPythonPackage
+              (project.renderers.buildPythonPackage { inherit python; });
+            inherit (python.pkgs) crawl4ai python-redis-cache;
+          };
 
-          devShells.default = config.devShells.app;
+          devShells.default = config.devShells.lagransala-dev;
 
-          devShells.app = let
+          devShells.lagransala-dev = let
             arg = project.renderers.withPackages {
               inherit python;
               extras = [ "test" "dev" ];
             };
             pythonEnv = python.withPackages arg;
-          in pkgs.mkShell { packages = [ pythonEnv ]; };
+          in pkgs.mkShell {
+            packages = [
+              pythonEnv
+              # config.packages.lagransala 
+            ];
+          };
         };
     };
 }

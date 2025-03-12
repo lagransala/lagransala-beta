@@ -1,29 +1,79 @@
+import re
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 from uuid import UUID
 
+from markdownify import markdownify
 from pydantic import BaseModel, HttpUrl
 from sqlmodel import Session, select
 
 from ..core.models import Venue
 
 
-class ContentBlockDef(BaseModel):
+class ContentBlockSpec(BaseModel):
     selector: str
     relevant: str
     irrelevant: str | None = None
     remove_regex: list[str] = []
-    critical: bool = False
     strip_elements: list[str] = ["a", "img"]
 
 
-class ContentBlock(ContentBlockDef):
+class ContentBlock(ContentBlockSpec):
     content: str | None  # Content could be None if the block is empty
+    is_markdown: bool = False
 
     def update_content(self, content: str | None) -> "ContentBlock":
         if content == "":
             content = None
         return self.model_copy(update={"content": content})
+
+    @property
+    def markdown(self) -> "ContentBlock":
+        if self.content is None:
+            return self
+        if self.is_markdown:
+            return self
+        else:
+            markdown_options = {
+                "strip": ["script", "style"] + self.strip_elements,
+                "heading_style": "ATX",
+                "bullets": "-",
+            }
+            return self.model_copy(
+                update={
+                    "content": markdownify(self.content, **markdown_options),
+                    "is_markdown": True,
+                }
+            )
+
+    @property
+    def clean_markdown(self) -> "ContentBlock":
+        block = self.markdown.model_copy()
+        for regex in self.remove_regex:
+            if block.content is None:
+                break
+            if block.content == "":
+                block = block.update_content(None)
+                break
+            assert block.content is not None
+            block = block.update_content(re.sub(regex, "", block.content))
+        if block.content is None:
+            return block
+
+        # Remove multiple blank lines
+        block = block.update_content(re.sub(r"\n\s*\n\s*\n", "\n\n", block.content))
+
+        # Remove trailing whitespace
+        assert block.content is not None
+        block = block.update_content(
+            "\n".join(line.rstrip() for line in block.content.splitlines())
+        )
+        assert block.content is not None
+        block = block.update_content(block.content.strip() + "\n")
+
+        if block.content in ["", " ", "\n"]:
+            block = block.update_content(None)
+        return block
 
 
 class SourcedContentBlocks(BaseModel):
@@ -95,19 +145,16 @@ class MonthPagination(BaseModel, Pagination):
 type PaginationType = NoPagination | SimplePagination | DatePagination | MonthPagination
 
 
-class ScheduleDef(BaseModel):
+class VenueSpec(BaseModel):
+    venue_id: UUID
+    block_defs: list[ContentBlockSpec]
+
     pagination: PaginationType
     event_url_pattern: str
 
     @property
-    def urls(self) -> list[HttpUrl]:
+    def pagination_urls(self) -> list[HttpUrl]:
         return self.pagination.urls()
-
-
-class VenueExtractionDef(BaseModel):
-    venue_id: UUID
-    schedule_spec: ScheduleDef
-    block_defs: list[ContentBlockDef]
 
     def get_venue(self, session: Session) -> Venue:
         venue = session.exec(select(Venue).where(Venue.id == self.venue_id)).first()

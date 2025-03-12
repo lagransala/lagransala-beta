@@ -8,16 +8,9 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
 
-from ..core.models import (
-    Event,
-    EventDateTime,
-    EventPartMap,
-    Presentation,
-    Projection,
-    Venue,
-)
+from ..core.models import Event, EventDateTime, Venue
 from ..deps import initialize_sqlmodel
-from .models import PublicPresentation, PublicProjection, PublicScheduledEvent
+from .models import PublicScheduledEvent
 
 
 @asynccontextmanager
@@ -49,9 +42,6 @@ def get_public_events(since: datetime, to: datetime) -> list[PublicScheduledEven
             (
                 select(Event)
                 .join(EventDateTime)
-                .join(EventPartMap)
-                .join(Presentation, isouter=True)
-                .join(Projection, isouter=True)
                 .join(Venue)
                 .distinct()
                 .where(EventDateTime.datetime >= since)
@@ -97,9 +87,3 @@ async def home(
             "events": grouped_events,
         },
     )
-
-
-def run():
-    import uvicorn
-
-    uvicorn.run(app, host="0.0.0.0", port=8000)
