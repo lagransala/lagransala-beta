@@ -6,36 +6,36 @@ import aiohttp
 from bs4 import BeautifulSoup
 from langfuse.decorators.langfuse_decorator import asyncio
 from pydantic import HttpUrl, TypeAdapter
-from redis.commands.json.path import Path
+from redis import StrictRedis
 
 from lagransala.utils.http_url_key import http_url_key
 
-from ..deps import get_redis
-from .models import ContentBlock, ContentBlockSpec, SourcedContentBlocks, VenueSpec
+from ..models import ContentBlock, ContentBlockSpec, VenueSpec
 
 logger = logging.getLogger(__name__)
-redis = get_redis()
 
 
 class ContentBlocksScraper:
-    def __init__(self, session: aiohttp.ClientSession, venue_spec: VenueSpec) -> None:
+    def __init__(
+        self, session: aiohttp.ClientSession, redis: StrictRedis, venue_spec: VenueSpec
+    ) -> None:
         self.session = session
+        self.redis = redis
+        self.redis_key = "content_blocks_scraper"
         self.venue_spec = venue_spec
-        self.redis_key = f"content_blocks_scraper:{venue_spec.venue_id.hex}"
 
     async def __call__(self, url: HttpUrl) -> list[ContentBlock]:
         key = f"{self.redis_key}:{http_url_key(url)}"
         adapter = TypeAdapter(list[ContentBlock])
-        if data := redis.get(key):
+        if data := self.redis.get(key):
             logger.debug(f"CacheHit: {key}")
             blocks = adapter.validate_json(data)
         else:
             text = await self._fetch_html(url)
             soup = BeautifulSoup(text, "html.parser")
             blocks = self._extract_content_blocks(soup)
-            redis.set(key, adapter.dump_json(blocks))
-            blocks = [block.clean_markdown for block in blocks]
-        return blocks
+            self.redis.set(key, adapter.dump_json(blocks))
+        return [block.clean_markdown for block in blocks]
 
     def task(self, url: HttpUrl) -> asyncio.Task[list[ContentBlock]]:
         return asyncio.create_task(self(url))
@@ -51,7 +51,10 @@ class ContentBlocksScraper:
         # Clean up the html soup
         for element in soup.find_all(["script", "style", "nav", "header", "footer"]):
             element.decompose()
-        blocks = [self._soup_scraper(soup, spec) for spec in self.venue_spec.block_defs]
+        blocks = [
+            self._soup_scraper(soup, spec)
+            for spec in self.venue_spec.content_block_specs
+        ]
         return blocks
 
     def _soup_scraper(
@@ -68,23 +71,21 @@ class ContentBlocksScraper:
                 f"Empty block found with selector `{spec.selector}` (relevant `{spec.relevant}`)"
             )
 
-        block = ContentBlock(
-            selector=spec.selector,
-            relevant=spec.relevant,
-            remove_regex=spec.remove_regex,
-            strip_elements=spec.strip_elements,
-            content=None if tag is None else str(tag),
-        )
+        block = ContentBlock(spec=spec, content=None if tag is None else str(tag))
         return block
 
 
 class ScheduleScraper:
     def __init__(
-        self, http_session: aiohttp.ClientSession, venue_spec: VenueSpec
+        self,
+        http_session: aiohttp.ClientSession,
+        redis: StrictRedis,
+        venue_spec: VenueSpec,
     ) -> None:
         self.http_session = http_session
+        self.redis = redis
+        self.redis_key = "schedule_scraper"
         self.venue_spec = venue_spec
-        self.redis_key = f"schedule_scraper:{venue_spec.venue_id.hex}"
 
     @property
     def tasks(self) -> list[asyncio.Task[set[HttpUrl]]]:
@@ -99,9 +100,9 @@ class ScheduleScraper:
         return self.venue_spec.pagination_urls
 
     async def _page_event_urls(self, page_url: HttpUrl) -> set[HttpUrl]:
-        key = f"{self.redis_key}:page_event_urls:{http_url_key(page_url)}"
+        key = f"{self.redis_key}:{http_url_key(page_url)}"
         adapter = TypeAdapter(set[HttpUrl])
-        if data := redis.get(key):
+        if data := self.redis.get(key):
             logger.debug(f"CacheHit: {key}")
             return adapter.validate_json(data)
         logger.info(f"Getting page urls from {page_url}")
@@ -119,7 +120,7 @@ class ScheduleScraper:
                     else:
                         urls.add(HttpUrl(urljoin(str(page_url), link)))
         data = adapter.dump_python(urls)
-        redis.set(key, adapter.dump_json(urls))
+        self.redis.set(key, adapter.dump_json(urls))
         return urls
 
     def _page_task(self, page_url: HttpUrl) -> asyncio.Task[set[HttpUrl]]:

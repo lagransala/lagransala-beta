@@ -1,10 +1,10 @@
 - venue_id: "96c480da116f405b84543ea092adede6"
-  pagination: 
-    url_template: "https://entradasfilmoteca.gob.es/Busqueda.aspx?fecha={date}"
-    date_format: "%d/%m/%Y"
-    limit: 62
+  pagination_type: "day" 
+  pagination_url: "https://entradasfilmoteca.gob.es/Busqueda.aspx?fecha={date}"
+  pagination_date_format: "%d/%m/%Y"
+  pagination_limit: 62
   event_url_pattern: "^FichaPelicula\\.aspx\\?id=\\d+&idPelicula=\\d+"
-  block_defs:
+  content_block_specs:
   - selector: '#textoFicha'
     irrelevant: paragraph with information about possible changes and inexactitudes
       in the program
@@ -23,12 +23,12 @@
     - Cine Doré
     - No hay Eventos disponibles.
 - venue_id: "3bcf158047184038b0d99ac450ff783d"
-  pagination: 
-    url_template: "https://www.cinetecamadrid.com/programacion?page={n}"
-    start_from: 0
-    limit: 5
+  pagination_type: "simple"
+  pagination_url: "https://www.cinetecamadrid.com/programacion?page={n}"
+  pagination_simple_start_from: 0
+  pagination_limit: 5
   event_url_pattern: "^/programacion/[\\w-]+"
-  block_defs:
+  content_block_specs:
   - selector: '#block-cineteca-theme-content .tit-ficha'
     relevant: title, director, country, duration
   - selector: '#infoprog .sb-sessions'
@@ -36,12 +36,12 @@
   - selector: '#block-cineteca-theme-content .field-name-field-description'
     relevant: description
 - venue_id: "88064eee72e4479c9370cb9e29955381"
-  pagination: 
-    url_template: "https://www.casamerica.es/agenda/{month}"
-    month_format: "%Y%m"
-    limit: 3
+  pagination_type: "month"
+  pagination_url: "https://www.casamerica.es/agenda/{month}"
+  pagination_date_format: "%Y%m"
+  pagination_limit: 3
   event_url_pattern: "^/cine/[\\w-]+"
-  block_defs:
+  content_block_specs:
   - selector: '#main header'
     relevant: cycle title and metadata
   - selector: '#main .contenido'
@@ -49,10 +49,9 @@
     - .*En Casa de América.*
     relevant: events information
 - venue_id: "e8dfe2ced142423397fb8f84b21a9e8a"
-  pagination: 
-    url: https://salaberlanga.com/programacion-de-actividades/"),
+  pagination_url: "https://salaberlanga.com/programacion-de-actividades/"
   event_url_pattern: "^https://salaberlanga.com/actividad/[\\w-]+/$"
-  block_defs:
+  content_block_specs:
   - selector: '#ficha-actividad .barra-nar-ficha'
     relevant: dates
     remove_regex:
@@ -67,10 +66,9 @@
   - selector: '#ficha-actividad .ficha-actividad .ficah-actividad-text'
     relevant: description
 - venue_id: "a1a7210095ca4975bba71f9f26d241d3"
-  pagination: 
-    url: "https://www.condeduquemadrid.es/programacion/cine"
+  pagination_url: "https://www.condeduquemadrid.es/programacion/cine"
   event_url_pattern: "^/actividades/[\\w-]+"
-  block_defs:
+  content_block_specs:
   - selector: 'main .content .field-group-title'
     relevant: title
   - selector: '#main .content .field--group-html'
@@ -80,10 +78,9 @@
   - selector: '#edit-group-ficha-artistica'
     relevant: director, and more credits
 - venue_id: "97e1ef3f4bc246de8705e7b2b71f77af"
-  pagination: 
-    url: "https://www.circulobellasartes.com/cine-estudio/"
+  pagination_url: "https://www.circulobellasartes.com/cine-estudio/"
   event_url_pattern: "^https://www.circulobellasartes.com/ciclos-cine/peliculas/[\\w-]+/$"
-  block_defs:
+  content_block_specs:
   - selector: '#fl-main-content'
     relevant: event info
     remove_regex:

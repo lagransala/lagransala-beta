@@ -1,11 +1,11 @@
 import asyncio
-from uuid import UUID
 
 import typer
 from sqlmodel import Session, select
+from typing_extensions import Annotated
 
-from lagransala.core.models import Venue
-from lagransala.deps import initialize_sqlmodel
+from .deps import initialize_sqlmodel
+from .models import Venue
 
 cli = typer.Typer()
 
@@ -34,8 +34,8 @@ def list_venues():
 
 
 @cli.command()
-def extract(venue_slug: str | None = None):
-    from .extraction.app import main
+def extract(venue_slug: Annotated[str | None, typer.Argument()] = None):
+    from .scraping.app import main
 
     engine = initialize_sqlmodel()
 

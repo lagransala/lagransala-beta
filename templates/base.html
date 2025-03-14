@@ -5,17 +5,26 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="static/main.css">
+    <!-- <link rel="stylesheet" href="static/main.css"> -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- <script src="https://unpkg.com/@tailwindcss/browser@4"></script> -->
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+
     <title>La Gran Sala</title>
 </head>
 
 <body>
-    <header>
+    <header class="fixed p-4">
         {% block header %}
-        <h1>La Gran Sala</h1>
+        <a href="/">
+            <h1 class="text-3xl">La Gran Sala</h1>
+        </a>
         {% endblock header%}
     </header>
-    <main>
+    <main class="px-4 pt-16">
         {% block main %} {% endblock main %}
     </main>
 </body>
